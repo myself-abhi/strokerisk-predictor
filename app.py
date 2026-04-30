@@ -14,21 +14,14 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-# ---------- LOAD MODEL (with self-healing fallback) ----------
+# ---------- LOAD MODEL ----------
+# We always retrain from the raw CSV at startup. This is the most reliable approach
+# because pickled scikit-learn models can break across version differences between
+# the dev machine and the deployment environment. The retrain takes about 5 seconds
+# on cold start and is cached for the rest of the session.
 @st.cache_resource
 def load_bundle():
-    """Try to load the pickled bundle. If the pickle is incompatible with
-    the currently-installed sklearn (version drift on Streamlit Cloud), retrain
-    from the raw CSV so the app always works.
-    """
-    try:
-        return joblib.load("stroke_model.joblib")
-    except Exception as e:
-        st.warning(
-            f"Stored model could not be loaded ({type(e).__name__}). "
-            "Retraining from the raw CSV — this takes about 5 seconds and only happens once."
-        )
-        return _retrain_from_csv()
+    return _retrain_from_csv()
 
 
 def _retrain_from_csv():
@@ -154,7 +147,7 @@ st.markdown("""
 st.markdown("""
 <div class="app-header">
   <h1>🧠 StrokeRisk Predictor</h1>
-  <p>Data Mining Project | Powered by clinical data on 5,109 patients</p>
+  <p>ALY6040 Final Project | Powered by clinical data on 5,109 patients</p>
 </div>
 """, unsafe_allow_html=True)
 
@@ -167,7 +160,7 @@ age = st.sidebar.slider("Age", 1, 100, 55)
 gender = st.sidebar.selectbox("Gender", ["Male", "Female"])
 hypertension = st.sidebar.radio("Hypertension", ["No", "Yes"], horizontal=True)
 heart_disease = st.sidebar.radio("Heart Disease", ["No", "Yes"], horizontal=True)
-married = st.sidebar.selectbox("Married", ["Yes", "No"])
+ever_married = st.sidebar.selectbox("Ever Married", ["Yes", "No"])
 work_type = st.sidebar.selectbox(
     "Work Type", ["Private", "Self-employed", "Govt_job", "children", "Never_worked"]
 )
@@ -196,7 +189,7 @@ def build_row():
         "age": float(age),
         "hypertension": 1 if hypertension == "Yes" else 0,
         "heart_disease": 1 if heart_disease == "Yes" else 0,
-        "married": married,
+        "ever_married": ever_married,
         "work_type": work_type,
         "Residence_type": residence,
         "avg_glucose_level": float(glucose),
@@ -231,7 +224,7 @@ def compute_contributions(X):
         "glucose_high": "Glucose >= 125",
         "bmi_obese": "BMI >= 30 (obese)",
         "gender_Male": "Gender: Male",
-        "married_Yes": "Married",
+        "ever_married_Yes": "Ever married",
         "work_type_Private": "Work: Private",
         "work_type_Self-employed": "Work: Self-employed",
         "work_type_children": "Work: children",
