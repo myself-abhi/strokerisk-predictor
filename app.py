@@ -245,13 +245,22 @@ def compute_contributions(X):
 
 
 # ---------- BAND HELPERS ----------
-# 3-color rule: GREEN low, NAVY moderate, RED high.
+# Headline color is strictly binary: GREEN if low risk (good), RED otherwise (bad).
+# The Low / Moderate / High label still shows the three bands for context.
+GOOD_GREEN = "#2E7D32"
+BAD_RED = "#C62828"
+BAND_THRESHOLD = 0.20  # below this is green (good), at or above is red (bad)
+
+
 def risk_band(prob):
-    if prob < 0.20:
-        return "Low", "#2E7D32"
-    if prob < 0.50:
-        return "Moderate", "#1A237E"
-    return "High", "#C62828"
+    if prob < BAND_THRESHOLD:
+        label = "Low"
+    elif prob < 0.50:
+        label = "Moderate"
+    else:
+        label = "High"
+    color = GOOD_GREEN if prob < BAND_THRESHOLD else BAD_RED
+    return label, color
 
 
 def percentile_rank(prob):
@@ -323,6 +332,37 @@ else:
         </div>
         """, unsafe_allow_html=True)
 
+    # ============ HOW IT WORKS EXPANDER ============
+    with st.expander("ℹ️  How is this score calculated?"):
+        st.markdown("""
+The model is a **logistic regression** trained with **SMOTE oversampling** on
+5,109 patient records. Logistic regression is a standard statistical method that
+learns how much each input nudges the predicted outcome up or down.
+
+When you click **Calculate My Risk**, the app does four things:
+
+1. **Standardizes your inputs** so values like age 67 and BMI 28 sit on a comparable scale.
+2. **Multiplies each input by a coefficient** the model learned during training. Some
+   coefficients are positive (raise risk), some are negative (lower risk).
+3. **Sums the contributions** to produce a single number called the log-odds.
+4. **Squashes that number through a sigmoid function** to map it to a percentage between
+   0% and 100%.
+
+The **Top Risk Drivers** panel below shows you the biggest individual contributions in
+order, so you can see exactly which inputs moved the needle for your profile.
+
+**About the percentage**: SMOTE oversampling distorts the raw probability scale, so a
+reading like 35% does **not** mean "35 out of 100 patients with this profile have a stroke."
+It means "this profile sits well above population average risk." The Risk Band on the gauge
+translates the percentage into a clinical interpretation: under 20% is low (green / good),
+above 20% the model is flagging risk that's worth a clinician's attention (red / bad).
+
+**Why we chose this model**: of the four we tested (logistic regression, logistic + SMOTE,
+random forest, gradient boosting), the SMOTE-trained logit caught **82% of real strokes** in
+the test set, vs. just 4% for vanilla logistic regression. Recall matters more than raw
+accuracy in a screening tool — missing a stroke is a much bigger cost than a false alarm.
+        """)
+
     # ============ RISK BAR ============
     st.markdown("**Risk gauge**")
     bar_col1, bar_col2, bar_col3 = st.columns([1, 6, 1])
@@ -330,13 +370,13 @@ else:
         st.progress(min(float(proba), 1.0))
     legend = st.columns(3)
     with legend[0]:
-        st.markdown('<div style="text-align:left;color:#2E7D32;">Low &lt; 20%</div>',
+        st.markdown('<div style="text-align:left;color:#2E7D32;">Low &lt; 20% (good)</div>',
                     unsafe_allow_html=True)
     with legend[1]:
-        st.markdown('<div style="text-align:center;color:#1A237E;">Moderate 20-50%</div>',
+        st.markdown('<div style="text-align:center;color:#C62828;">Moderate 20-50%</div>',
                     unsafe_allow_html=True)
     with legend[2]:
-        st.markdown('<div style="text-align:right;color:#C62828;">High &gt; 50%</div>',
+        st.markdown('<div style="text-align:right;color:#C62828;">High &gt; 50% (bad)</div>',
                     unsafe_allow_html=True)
 
     st.markdown("---")
