@@ -1,0 +1,8 @@
+[theme]
+# Forces every Streamlit-rendered element (sliders, progress bars, focus rings,
+# checkboxes, etc.) to use navy instead of the default red-pink.
+primaryColor = "#1A237E"
+backgroundColor = "#FFFFFF"
+secondaryBackgroundColor = "#F5F5F5"
+textColor = "#262730"
+font = "sans serif"
